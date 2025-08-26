@@ -327,5 +327,10 @@ namespace FutsoLig
                 StopAutoUpdateLoop();
             }
         }
+
+        private void toolStripUpdate_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
