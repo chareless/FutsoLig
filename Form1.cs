@@ -215,6 +215,19 @@ namespace FutsoLig
                     try
                     {
                         // Event seçilmişse kategori güncelle
+                        var events = await GetEventsAsync(token);
+                        listBoxEvents.Invoke((Action)(() =>
+                        {
+                            listBoxCategories.Items.Clear();
+                            if (events.Count > 0)
+                            {
+                                for (int i = 0; i < events.Count; i++)
+                                {
+                                    listBoxEvents.Items.Add($"{i + 1}) {events[i].Name} - {events[i].Date:yyyy-MM-dd HH:mm}");
+                                }
+                            }
+                        }));
+
                         if (!string.IsNullOrWhiteSpace(eventId))
                         {
                             var categories = await GetCategoriesAsync(token);
@@ -296,7 +309,7 @@ namespace FutsoLig
         private static void PrepareCommonHeaders(bool includeAuth, string? bearerToken = null)
         {
             client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0");
             client.DefaultRequestHeaders.Add("Accept", "application/json");
             client.DefaultRequestHeaders.Add("Referer", "https://www.passo.com.tr/");
             client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
@@ -331,6 +344,11 @@ namespace FutsoLig
         private void toolStripUpdate_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void textBoxEventId_TextChanged(object sender, EventArgs e)
+        {
+            eventId = textBoxEventId.Text.Trim();
         }
     }
 }

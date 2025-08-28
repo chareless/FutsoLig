@@ -80,6 +80,7 @@
             textBoxEventId.Name = "textBoxEventId";
             textBoxEventId.Size = new Size(137, 23);
             textBoxEventId.TabIndex = 7;
+            textBoxEventId.TextChanged += textBoxEventId_TextChanged;
             // 
             // listBoxCategories
             // 
