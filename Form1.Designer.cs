@@ -203,6 +203,7 @@
             toolStripContact.Name = "toolStripContact";
             toolStripContact.Size = new Size(57, 20);
             toolStripContact.Text = "İletişim";
+            toolStripContact.Click += toolStripContact_Click;
             // 
             // Form1
             // 

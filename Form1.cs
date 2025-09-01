@@ -1,6 +1,8 @@
 ﻿using System.Text.Json;
 using System.Text;
 using static FutsoLig.Models;
+using System.Net;
+using HtmlAgilityPack;
 
 namespace FutsoLig
 {
@@ -36,6 +38,8 @@ namespace FutsoLig
 
         private List<EventItem>? currentEvents;
         private List<CategoryItem>? currentCategories;
+
+        private string VERSION = "1.0.0"; //01.09.2025
 
         public async void Load()
         {
@@ -343,12 +347,80 @@ namespace FutsoLig
 
         private void toolStripUpdate_Click(object sender, EventArgs e)
         {
-
+            CheckUpdate();
         }
 
         private void textBoxEventId_TextChanged(object sender, EventArgs e)
         {
             eventId = textBoxEventId.Text.Trim();
+        }
+
+        private void toolStripContact_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://chareless.github.io/saribayirdeniz/#contact",
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Site Açılamadı: " + ex.Message);
+            }
+        }
+
+        private void CheckUpdate()
+        {
+            try
+            {
+                Uri url = new Uri("https://chareless.github.io/saribayirdeniz/futsolig.html");
+                WebClient client = new WebClient();
+                client.Encoding = Encoding.UTF8;
+                string html = client.DownloadString(url);
+                HtmlAgilityPack.HtmlDocument dokuman = new HtmlAgilityPack.HtmlDocument();
+                dokuman.LoadHtml(html);
+                HtmlNodeCollection titles = dokuman.DocumentNode.SelectNodes("/html/body/div/div/div[2]/div/div/div/div/div[2]/div[2]/div/div/p[5]/h7");
+                string version = "";
+                foreach (HtmlNode title in titles)
+                {
+                    version = title.InnerText;
+                }
+
+                if (version == VERSION)
+                {
+                    MessageBox.Show("Sürüm Güncel", "Güncellemeleri Denetle", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    DialogResult result = MessageBox.Show("Güncelleme Mevcut. Yeni Sürümü İndirmek İster Misiniz?", "Güncellemeleri Denetle",
+                        MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+
+                    if (result == DialogResult.OK)
+                    {
+                        try
+                        {
+                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = "https://github.com/chareless/FutsoLig-for-Windows/archive/master.zip",
+                                UseShellExecute = true
+                            };
+                            System.Diagnostics.Process.Start(psi);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("İndirme sırasında bir hata oluştu: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Güncel Sürüm Bulunurken Hata!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
     }
 }
