@@ -43,7 +43,6 @@ namespace FutsoLig
 
         private string VERSION = "1.1";
 
-        // *** 1. HATA DÜZELTMESİ: HttpClient'ı GZip desteği ile başlatan metot ***
         private static HttpClient InitializeHttpClient()
         {
             var handler = new HttpClientHandler
@@ -163,6 +162,7 @@ namespace FutsoLig
 
         private static async Task<List<EventItem>> GetEventsAsync(CancellationToken cancellationToken)
         {
+            // Sadece Authorization başlığını kaldırır (eğer önceki çağrıda kalmışsa)
             PrepareCommonHeaders(includeAuth: false);
 
             var payload = new EventsRequest
@@ -187,6 +187,16 @@ namespace FutsoLig
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    // Hata mesajını yakala
+                    string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    // DEBUG İÇİN: Console.WriteLine($"Events API Hatası: {response.StatusCode} - {errorBody}");
+
+                    // 403 Forbidden durumunu burada göreceğiz.
+                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        // DEBUG İÇİN:
+                        Console.WriteLine("KRİTİK HATA: Etkinlikler API'si 403 Forbidden döndü. Bot olarak algılanıyor.");
+                    }
                     return new List<EventItem>();
                 }
 
@@ -194,8 +204,15 @@ namespace FutsoLig
                 var result = JsonSerializer.Deserialize<PassoResponse>(responseBody);
                 return result?.ValueList ?? new List<EventItem>();
             }
-            catch
+            catch (OperationCanceledException)
             {
+                // Görev iptal edildiğinde sadece bu hatayı fırlat
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Diğer hatalar (Ağ, Serileştirme vb.)
+                Console.WriteLine($"GetEventsAsync sırasında hata: {ex.Message}");
                 return new List<EventItem>();
             }
         }
@@ -267,6 +284,25 @@ namespace FutsoLig
                 {
                     try
                     {
+                        if(string.IsNullOrWhiteSpace(eventId))
+                        {
+                            cts = new CancellationTokenSource();
+                            var events = await GetEventsAsync(cts.Token);
+                            currentEvents = events;
+
+
+                            listBoxEvents.Invoke((Action)(() =>
+                            {
+                                listBoxEvents.Items.Clear();
+                                if (events.Count > 0)
+                                {
+                                    for (int i = 0; i < events.Count; i++)
+                                    {
+                                        listBoxEvents.Items.Add($"{i + 1}) {events[i].Name} - {events[i].Date:yyyy-MM-dd HH:mm}");
+                                    }
+                                }
+                            }));
+                        }
                         // Sadece Event seçilmişse kategori güncelle (Event listesi sadece Load'da güncellenmeli)
                         if (!string.IsNullOrWhiteSpace(eventId))
                         {
