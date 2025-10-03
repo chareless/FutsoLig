@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
 using System.Text;
+using HtmlAgilityPack;
 using static FutsoLig.Models;
 using System.Net;
-using HtmlAgilityPack;
 
 namespace FutsoLig
 {
@@ -12,25 +12,27 @@ namespace FutsoLig
         {
             InitializeComponent();
 
+            // HttpClient'ın GZip desteği ile başlatılması
+            client = InitializeHttpClient();
+
             Load();
             StartAutoUpdateLoop();
         }
 
-        private static readonly HttpClient client = new HttpClient();
+        // HttpClient'ı artık sadece burada readonly olarak değil, fonksiyonla başlatacağız.
+        private static HttpClient client;
 
+        // API URL'leri
         private static string EventsApiUrl = "https://ticketingweb.passo.com.tr/api/passoweb/allevents";
-
         private static string GetCatUrl(string eventId) =>
             $"https://cppasso2.mediatriple.net/30s/api/passoweb/getcategories?eventId={eventId}&serieId=&tickettype=100&campaignId=null&validationintegrationid=null";
-
         private static string GetBlocksUrl(string eventId, string catId) =>
             $"https://cppasso2.mediatriple.net/30s/api/passoweb/getavailableblocklist?eventId={eventId}&serieId=&seatCategoryId={catId}";
 
-
+        // Statik değişkenler
         static string _bearerToken = "";
         static string eventId = "";
         static string catId = "";
-
         static bool isLoop = true;
 
         private CancellationTokenSource? cts;
@@ -39,7 +41,39 @@ namespace FutsoLig
         private List<EventItem>? currentEvents;
         private List<CategoryItem>? currentCategories;
 
-        private string VERSION = "1.0.0"; //01.09.2025
+        private string VERSION = "1.1";
+
+        // *** 1. HATA DÜZELTMESİ: HttpClient'ı GZip desteği ile başlatan metot ***
+        private static HttpClient InitializeHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                // GZip ve Deflate sıkıştırmasını otomatik açmayı etkinleştirir
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            };
+            var client = new HttpClient(handler);
+
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("Referer", "https://www.passo.com.tr/");
+            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
+
+            return client;
+        }
+
+
+        // *** 2. HATA DÜZELTMESİ: Başlık Hazırlama (Clear() kaldırıldı, sadece Authorization yönetiliyor) ***
+        private static void PrepareCommonHeaders(bool includeAuth, string? bearerToken = null)
+        {
+            // Önceki Authorization başlığını kaldırın (sadece değişen başlık için bu yapılır)
+            client.DefaultRequestHeaders.Remove("Authorization");
+
+            if (includeAuth && !string.IsNullOrWhiteSpace(bearerToken))
+            {
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {bearerToken}");
+            }
+        }
+
 
         public async void Load()
         {
@@ -63,7 +97,6 @@ namespace FutsoLig
 
             richTextBox1.Text = "Etkinlik listesi yüklendi. Lütfen bir seçim yapın.";
         }
-
 
         private async void listBoxEvents_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -151,8 +184,13 @@ namespace FutsoLig
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await client.PostAsync(EventsApiUrl, content, cancellationToken);
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new List<EventItem>();
+                }
+
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 var result = JsonSerializer.Deserialize<PassoResponse>(responseBody);
                 return result?.ValueList ?? new List<EventItem>();
             }
@@ -170,6 +208,12 @@ namespace FutsoLig
             {
                 var url = GetCatUrl(eventId);
                 var response = await client.GetAsync(url, cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new List<CategoryItem>();
+                }
+
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(responseBody))
@@ -192,6 +236,12 @@ namespace FutsoLig
             {
                 var url = GetBlocksUrl(eventId, catId);
                 var response = await client.GetAsync(url, cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return new List<BlockItem>();
+                }
+
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(responseBody))
@@ -207,36 +257,23 @@ namespace FutsoLig
         }
         private void StartAutoUpdateLoop()
         {
-            // Önce eski loop varsa iptal et
             autoUpdateCts?.Cancel();
             autoUpdateCts = new CancellationTokenSource();
             var token = autoUpdateCts.Token;
 
             Task.Run(async () =>
             {
-                while (!token.IsCancellationRequested)
+                while (!token.IsCancellationRequested && isLoop)
                 {
                     try
                     {
-                        // Event seçilmişse kategori güncelle
-                        var events = await GetEventsAsync(token);
-                        listBoxEvents.Invoke((Action)(() =>
-                        {
-                            listBoxCategories.Items.Clear();
-                            if (events.Count > 0)
-                            {
-                                for (int i = 0; i < events.Count; i++)
-                                {
-                                    listBoxEvents.Items.Add($"{i + 1}) {events[i].Name} - {events[i].Date:yyyy-MM-dd HH:mm}");
-                                }
-                            }
-                        }));
-
+                        // Sadece Event seçilmişse kategori güncelle (Event listesi sadece Load'da güncellenmeli)
                         if (!string.IsNullOrWhiteSpace(eventId))
                         {
                             var categories = await GetCategoriesAsync(token);
                             currentCategories = categories;
 
+                            // UI güncellemesi
                             listBoxCategories.Invoke((Action)(() =>
                             {
                                 listBoxCategories.Items.Clear();
@@ -250,17 +287,6 @@ namespace FutsoLig
                                     }
                                 }
                             }));
-                            if (richTextBox1.InvokeRequired)
-                            {
-                                richTextBox1.Invoke((Action)(() =>
-                                {
-                                    richTextBox1.Text += $"\nKategori listesi güncellendi. {DateTime.Now}";
-                                }));
-                            }
-                            else
-                            {
-                                richTextBox1.Text += $"\nKategori listesi güncellendi. {DateTime.Now}";
-                            }
                         }
 
                         // Event ve kategori seçilmişse blokları güncelle
@@ -268,6 +294,7 @@ namespace FutsoLig
                         {
                             var blocks = await GetBlocksAsync(token);
 
+                            // UI güncellemesi
                             listBoxBlocks.Invoke((Action)(() =>
                             {
                                 listBoxBlocks.Items.Clear();
@@ -282,21 +309,22 @@ namespace FutsoLig
                             }));
                         }
 
+                        // RichTextBox güncellemesi sadece bir kere yapılabilir
                         if (richTextBox1.InvokeRequired)
                         {
                             richTextBox1.Invoke((Action)(() =>
                             {
-                                richTextBox1.Text += $"\nBlok listesi güncellendi. {DateTime.Now}";
+                                richTextBox1.Text += $"\nGüncelleme tamamlandı. {DateTime.Now}";
                             }));
                         }
-                        else
-                        {
-                            richTextBox1.Text += $"\nBlok listesi güncellendi. {DateTime.Now}";
-                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
                     }
                     catch
                     {
-                        // Hata olursa loop devam etsin
+                    
                     }
 
                     await Task.Delay(5000, token);
@@ -310,19 +338,7 @@ namespace FutsoLig
             autoUpdateCts?.Cancel();
         }
 
-        private static void PrepareCommonHeaders(bool includeAuth, string? bearerToken = null)
-        {
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0");
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.DefaultRequestHeaders.Add("Referer", "https://www.passo.com.tr/");
-            client.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
-
-            if (includeAuth && !string.IsNullOrWhiteSpace(bearerToken))
-            {
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {bearerToken}");
-            }
-        }
+        // --- Diğer Olay İşleyicileri (TextChanged, Click vb.) değişmedi ---
 
         private void textBoxBearer_TextChanged(object sender, EventArgs e)
         {
@@ -377,44 +393,49 @@ namespace FutsoLig
             try
             {
                 Uri url = new Uri("https://chareless.github.io/saribayirdeniz/futsolig.html");
-                WebClient client = new WebClient();
-                client.Encoding = Encoding.UTF8;
-                string html = client.DownloadString(url);
-                HtmlAgilityPack.HtmlDocument dokuman = new HtmlAgilityPack.HtmlDocument();
-                dokuman.LoadHtml(html);
-                HtmlNodeCollection titles = dokuman.DocumentNode.SelectNodes("/html/body/div/div/div[2]/div/div/div/div/div[2]/div[2]/div/div/p[5]/h7");
-                string version = "";
-                foreach (HtmlNode title in titles)
+                using (WebClient client = new WebClient())
                 {
-                    version = title.InnerText;
-                }
+                    client.Encoding = Encoding.UTF8;
+                    string html = client.DownloadString(url);
+                    HtmlAgilityPack.HtmlDocument dokuman = new HtmlAgilityPack.HtmlDocument();
+                    dokuman.LoadHtml(html);
+                    HtmlNodeCollection titles = dokuman.DocumentNode.SelectNodes("/html/body/div/div/div[2]/div/div/div/div/div[2]/div[2]/div/div/p[5]/h7");
+                    string version = "";
 
-                if (version == VERSION)
-                {
-                    MessageBox.Show("Sürüm Güncel", "Güncellemeleri Denetle", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    DialogResult result = MessageBox.Show("Güncelleme Mevcut. Yeni Sürümü İndirmek İster Misiniz?", "Güncellemeleri Denetle",
-                        MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
-
-                    if (result == DialogResult.OK)
+                    if (titles != null)
                     {
-                        try
+                        foreach (HtmlNode title in titles)
                         {
-                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo
-                            {
-                                FileName = "https://github.com/chareless/FutsoLig-for-Windows/archive/master.zip",
-                                UseShellExecute = true
-                            };
-                            System.Diagnostics.Process.Start(psi);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("İndirme sırasında bir hata oluştu: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            version = title.InnerText;
                         }
                     }
 
+                    if (version == VERSION)
+                    {
+                        MessageBox.Show("Sürüm Güncel", "Güncellemeleri Denetle", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        DialogResult result = MessageBox.Show("Güncelleme Mevcut. Yeni Sürümü İndirmek İster Misiniz?", "Güncellemeleri Denetle",
+                             MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+
+                        if (result == DialogResult.OK)
+                        {
+                            try
+                            {
+                                System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = "https://github.com/chareless/FutsoLig-for-Windows/archive/master.zip",
+                                    UseShellExecute = true
+                                };
+                                System.Diagnostics.Process.Start(psi);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show("İndirme sırasında bir hata oluştu: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception e)

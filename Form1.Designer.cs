@@ -51,7 +51,7 @@
             // 
             // richTextBox1
             // 
-            richTextBox1.Location = new Point(12, 409);
+            richTextBox1.Location = new Point(12, 443);
             richTextBox1.Name = "richTextBox1";
             richTextBox1.Size = new Size(400, 109);
             richTextBox1.TabIndex = 4;
@@ -62,13 +62,13 @@
             listBoxEvents.FormattingEnabled = true;
             listBoxEvents.Location = new Point(12, 61);
             listBoxEvents.Name = "listBoxEvents";
-            listBoxEvents.Size = new Size(400, 229);
+            listBoxEvents.Size = new Size(400, 259);
             listBoxEvents.TabIndex = 5;
             listBoxEvents.SelectedIndexChanged += listBoxEvents_SelectedIndexChanged;
             // 
             // textBoxBearer
             // 
-            textBoxBearer.Location = new Point(12, 366);
+            textBoxBearer.Location = new Point(12, 400);
             textBoxBearer.Name = "textBoxBearer";
             textBoxBearer.Size = new Size(205, 23);
             textBoxBearer.TabIndex = 6;
@@ -76,7 +76,7 @@
             // 
             // textBoxEventId
             // 
-            textBoxEventId.Location = new Point(12, 321);
+            textBoxEventId.Location = new Point(12, 355);
             textBoxEventId.Name = "textBoxEventId";
             textBoxEventId.Size = new Size(137, 23);
             textBoxEventId.TabIndex = 7;
@@ -87,13 +87,13 @@
             listBoxCategories.FormattingEnabled = true;
             listBoxCategories.Location = new Point(449, 61);
             listBoxCategories.Name = "listBoxCategories";
-            listBoxCategories.Size = new Size(400, 229);
+            listBoxCategories.Size = new Size(400, 259);
             listBoxCategories.TabIndex = 8;
             listBoxCategories.SelectedIndexChanged += listBoxCategories_SelectedIndexChanged;
             // 
             // textBoxCatId
             // 
-            textBoxCatId.Location = new Point(275, 321);
+            textBoxCatId.Location = new Point(275, 355);
             textBoxCatId.Name = "textBoxCatId";
             textBoxCatId.Size = new Size(137, 23);
             textBoxCatId.TabIndex = 9;
@@ -101,7 +101,7 @@
             // listBoxBlocks
             // 
             listBoxBlocks.FormattingEnabled = true;
-            listBoxBlocks.Location = new Point(449, 319);
+            listBoxBlocks.Location = new Point(449, 353);
             listBoxBlocks.Name = "listBoxBlocks";
             listBoxBlocks.Size = new Size(400, 199);
             listBoxBlocks.TabIndex = 10;
@@ -133,7 +133,7 @@
             label3.AutoSize = true;
             label3.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 162);
             label3.ForeColor = SystemColors.Control;
-            label3.Location = new Point(449, 295);
+            label3.Location = new Point(449, 329);
             label3.Name = "label3";
             label3.Size = new Size(58, 21);
             label3.TabIndex = 13;
@@ -143,7 +143,7 @@
             // 
             label4.AutoSize = true;
             label4.ForeColor = SystemColors.Control;
-            label4.Location = new Point(12, 303);
+            label4.Location = new Point(12, 337);
             label4.Name = "label4";
             label4.Size = new Size(59, 15);
             label4.TabIndex = 14;
@@ -153,7 +153,7 @@
             // 
             label5.AutoSize = true;
             label5.ForeColor = SystemColors.Control;
-            label5.Location = new Point(275, 303);
+            label5.Location = new Point(275, 337);
             label5.Name = "label5";
             label5.Size = new Size(65, 15);
             label5.TabIndex = 15;
@@ -163,7 +163,7 @@
             // 
             label6.AutoSize = true;
             label6.ForeColor = SystemColors.Control;
-            label6.Location = new Point(12, 348);
+            label6.Location = new Point(12, 382);
             label6.Name = "label6";
             label6.Size = new Size(44, 15);
             label6.TabIndex = 16;
@@ -174,7 +174,7 @@
             LoopButton.BackColor = Color.DarkOrange;
             LoopButton.FlatStyle = FlatStyle.Popup;
             LoopButton.ForeColor = SystemColors.ControlText;
-            LoopButton.Location = new Point(275, 351);
+            LoopButton.Location = new Point(275, 385);
             LoopButton.Name = "LoopButton";
             LoopButton.Size = new Size(137, 38);
             LoopButton.TabIndex = 17;
@@ -187,7 +187,7 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { toolStripUpdate, toolStripContact });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(880, 24);
+            menuStrip1.Size = new Size(894, 24);
             menuStrip1.TabIndex = 18;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -210,7 +210,7 @@
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.DarkRed;
-            ClientSize = new Size(880, 545);
+            ClientSize = new Size(894, 593);
             Controls.Add(LoopButton);
             Controls.Add(label6);
             Controls.Add(label5);
@@ -229,6 +229,7 @@
             FormBorderStyle = FormBorderStyle.Fixed3D;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
+            MaximizeBox = false;
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "FutsoLig";
